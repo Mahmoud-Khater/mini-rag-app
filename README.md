@@ -2,6 +2,11 @@
 
 This is a minimal implementation of the RAG model for question answering.
 
+## kill
+'''bash
+kill -9 $(lsof -t -i:5000)
+'''
+
 ## Requirements
 
 - Python 3.10
