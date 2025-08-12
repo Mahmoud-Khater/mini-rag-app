@@ -1,6 +1,9 @@
 from .BaseController import BaseController
+from .ProjectController import ProjectController
 from models import ResponseSignal
 from fastapi import UploadFile
+import re
+import os
 
 class DataController(BaseController):
     
@@ -14,3 +17,38 @@ class DataController(BaseController):
             return False , ResponseSignal.FILE_SIZE_EXCEED.value
         
         return True , ResponseSignal.FILE_VALID_SUCCESS.value
+    def get_clean_file_name(self, file_name : str):
+
+        #remove special chars except . and underscore
+        clean_name = re.sub(r'[^\w.]','',file_name.strip())
+
+        clean_name = clean_name.replace(" ", "_")
+
+        return clean_name
+    
+    def generateFileName (self, file: UploadFile, project_id : str):
+        random_fileName = self.generateRandomString()
+        project_path = ProjectController().getProjectPath(project_id=project_id)
+        originalName = file.filename
+        clean_name = self.get_clean_file_name(
+            file_name=originalName
+        )
+
+        new_file_name= random_fileName + "_" + clean_name
+
+        new_path = os.path.join(
+            project_path,
+            new_file_name
+        )
+
+        while os.path.exists(new_path):
+            random_fileName = self.generateRandomString()
+            new_file_name= random_fileName + "_" + clean_name
+
+            new_path = os.path.join(
+                project_path,
+                new_file_name
+            )
+
+
+        return new_path
