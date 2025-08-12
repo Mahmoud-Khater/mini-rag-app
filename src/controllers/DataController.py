@@ -26,7 +26,7 @@ class DataController(BaseController):
 
         return clean_name
     
-    def generateFileName (self, file: UploadFile, project_id : str):
+    def generateFilePath (self, file: UploadFile, project_id : str):
         random_fileName = self.generateRandomString()
         project_path = ProjectController().getProjectPath(project_id=project_id)
         originalName = file.filename
@@ -51,4 +51,4 @@ class DataController(BaseController):
             )
 
 
-        return new_path
+        return new_path, new_file_name
