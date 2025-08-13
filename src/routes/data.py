@@ -2,9 +2,13 @@ from fastapi import FastAPI, APIRouter, Depends , UploadFile , status
 from fastapi.responses import JSONResponse
 import os
 from helpers.config import get_settings , Settings
-from controllers import DataController, ProjectController
+from controllers import DataController, ProjectController , ProcessController
 import aiofiles
+from models import ResponseSignal
+import logging
+from .schemes.data import ProcessRequest
 
+logger = logging.getLogger('uvicorn.error')
 data_router = APIRouter(
 	prefix="/api/v1/data",
 	tags=["rag","data"],
@@ -14,7 +18,8 @@ data_router = APIRouter(
 async def upload_data(project_id : str, file: UploadFile,
                       app_settings : Settings = Depends(get_settings)):
     #validate
-    is_valid, signal = DataController().validate_file(file=file)
+    data_controller = DataController()
+    is_valid, signal = data_controller.validate_file(file=file)
 
     if not is_valid:
         return JSONResponse (
@@ -24,19 +29,60 @@ async def upload_data(project_id : str, file: UploadFile,
             }
         )
     
-    project_dir_path = ProjectController().get_project_path(project_id = project_id)
-    
-    file_path = os.path.join(
-        project_dir_path,
-        file.filename
-    )
+    # project_dir_path = ProjectController().getProjectPath(project_id = project_id)
 
-    async with aiofiles.open(file_path,"wb") as f:
-        while chunk := await file.read(app_settings.FILE_DEFAULT_CHUNK_SIZE):
-            await f.write(chunk)
-    
-    return JSONResponse(
+    # file_path = os.path.join(
+    #     project_dir_path,
+    #     file.filename
+    # )
+
+    file_path, file_id = data_controller.generateFilePath(file = file,project_id=project_id)
+
+    try:
+        async with aiofiles.open(file_path,"wb") as f:
+            while chunk := await file.read(app_settings.FILE_DEFAULT_CHUNK_SIZE):
+                await f.write(chunk)
+    except Exception as e:
+        logger.error(f"Error while uploading : {e}")
+        return JSONResponse(
         content={
-            "signal" : ResponseSignal.FILE_UPLOAD_SUCCESS.value
+            status_code : status.HTTP_300_MULTIPLE_CHOICES,
+            "signal" : ResponseSignal.FILE_UPLOAD_FAILED.value
         }
     )
+    return JSONResponse(
+        content={
+            "signal" : ResponseSignal.FILE_UPLOAD_SUCCESS.value,
+            "file_id": file_id
+        }
+    )
+
+
+@data_router.post("/process/{project_id}")
+async def process_endpoint(project_id: str, process_request:ProcessRequest ):
+    
+    file_id=process_request.file_id
+    chunk_size = process_request.chunk_size
+    overlap_size = process_request.overlap_size
+
+    process_controller = ProcessController(project_id=project_id)
+
+    file_content = process_controller.getFileContent(
+        file_id=file_id
+    )
+
+    file_chunks = process_controller.processFileContent(
+        file_content=file_content,
+        file_id=file_id,
+        chunk_size=chunk_size,
+        overlap_size=overlap_size
+    )
+
+    if file_chunks is None or len(file_chunks)==0:
+        return JSONResponse(
+        content={
+            "signal" : ResponseSignal.FILE_PROCESS_SUCCESS.value,
+        }
+    )
+
+    return file_chunks
