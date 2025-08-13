@@ -13,7 +13,7 @@ kill -9 $(lsof -t -i:5000)
 
 - Python 3.10
 
-#### Install Dependenciessadddd
+#### Install Dependencies
 
 ```bash
 sudo apt update

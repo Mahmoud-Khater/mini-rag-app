@@ -10,7 +10,7 @@ class ProjectController(BaseController):
     
     def getProjectPath(self, project_id : str):
         project_dir = os.path.join(
-            self.file_dir,
+            self.files_dir,
             project_id
         )
 
@@ -18,5 +18,3 @@ class ProjectController(BaseController):
             os.makedirs(project_dir)
 
         return project_dir
-    
- 
